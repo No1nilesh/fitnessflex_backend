@@ -15,6 +15,10 @@ const userSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
+  phone:{
+type: Number,
+
+  },
   password: {
     type: String,
     required: true,
@@ -24,12 +28,10 @@ const userSchema = new mongoose.Schema({
     enum: ["user", "trainer", "admin"],
     default: "user",
   },
-  trainer: { type: mongoose.Schema.Types.ObjectId,
-  ref: 'Trainer' },
   
   membership: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Membership",
+    type: Boolean,
+    default:false,
   },
   workouts: [
     {
@@ -41,6 +43,9 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  end_of_membership_date:{
+    type:Date,
+},
 
   resetPasswordToken: String,
   resetPasswordExpire: Date,

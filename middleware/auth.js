@@ -4,25 +4,7 @@ const catchAsyncError = require("../middleware/catchAsyncError")
 const errorhander = require("../middleware/error")
 
 // Authenticatong User
-exports.isAuthenticatedUser = async (req, res, next) => {
-  try {
-    const { token } = req.cookies;
-    if (!token) {
-      return res
-        .status(401)
-        .json({ error: "please login to access this resource" });
-    }
-
-    const decodedData = jwt.verify(token, process.env.JWT_SECRET);
-
-    //id was given when the data was signed by jwt token
-    req.user = await User.findById(decodedData._id);
-    next();
-  } catch (error) {
-    res.status(500).json({ error: "Internal server error" });
-    console.log(error);
-  }
-};
+// 
 
 
 
@@ -49,4 +31,15 @@ exports.authorizeRoles = (...role) => {
     }
     next();
   };
+};
+
+
+
+
+exports.isActiveMember = (req, res, next) => {
+  if (req.user.membership) {
+    next();
+  } else {
+    res.status(401).json({ message: 'Unauthorized' });
+  }
 };

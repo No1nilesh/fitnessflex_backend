@@ -4,6 +4,9 @@ const ErrorHander = require("../utils/errorhander");
 const catchAsyncError = require("../middleware/catchAsyncError")
 const {authorizeRoles, isAuthenticatedUser} = require("../middleware/auth")
 const express = require("express");
+const { findByIdAndDelete } = require("../models/User");
+const Membership = require("../models/membership");
+const Member = require("../models/members");
 const router = express.Router();
 
 //View All user in the database
@@ -73,6 +76,8 @@ router.delete("/user/delete/:id",isAuthenticatedUser, authorizeRoles("admin"), c
     
 }))
 
+
+
 //Creates a new trainer
 router.post("/createnew/trainer", isAuthenticatedUser, authorizeRoles("admin"), catchAsyncError(async(req,res,next)=>{
     const {name, email, password, specialties, availability, hourlyRate} = req.body;
@@ -90,6 +95,8 @@ router.post("/createnew/trainer", isAuthenticatedUser, authorizeRoles("admin"), 
 
     const trainer = await Trainer.create({
         user: newuser._id,
+        name: name,
+        email:email,
         specialties:specialties,
         hourlyRate:hourlyRate,
         availability: availability
@@ -97,8 +104,7 @@ router.post("/createnew/trainer", isAuthenticatedUser, authorizeRoles("admin"), 
     await newuser.updateOne({ _id: newuser._id }, { $set: { trainer: trainer._id } },);
     res.status(200).json({
         success:true,
-        trainer,
-        newuser
+        trainer
     })
 }))
 
@@ -113,6 +119,8 @@ router.put("/make/trainer",isAuthenticatedUser,authorizeRoles("admin"),  catchAs
 
     const trainer = await Trainer.create({
         user: user._id,
+        name: user.name,
+        email:user.email,
         specialties: specialties,
         hourlyRate: hourlyRate,
         availability:availability
@@ -127,7 +135,142 @@ router.put("/make/trainer",isAuthenticatedUser,authorizeRoles("admin"),  catchAs
       
 }))
 
+//Get All trainer
+router.get("/alltrainers",isAuthenticatedUser,authorizeRoles("admin"), catchAsyncError(async(req, res, next)=>{
+    const trainer = await Trainer.find();
+
+    if(!trainer) return next(new ErrorHander("No trainer exists", 401));
+
+    res.status(200).json({
+        success:true,
+        trainer
+    })
+}))
+
+//Get Single trainer
+router.get("/trainer/:id",isAuthenticatedUser,authorizeRoles("admin"), catchAsyncError(async(req,res, next)=>{
+    const trainer = await Trainer.findById(req.params.id);
+
+    if(!trainer) return next(new ErrorHander("Trainer not found", 401));
+
+    res.status(200).json({
+        success: true,
+        trainer
+    })
+}))
+
+//Delete a trainer permanently
+router.delete("/delete/trainer/:id",isAuthenticatedUser, authorizeRoles("admin"), catchAsyncError(async(req, res, next)=>{
+    const trainer = await Trainer.findByIdAndDelete(req.params.id);
+    if(!trainer) return next(new ErrorHander("Trainer Not exists", 401));
+
+    const user = await User.findByIdAndDelete(trainer.user);
+    if(!user) return next(new ErrorHander("user not exists", 401))
+    res.status(200).json({
+        success:true,
+        message: "Trainer Deleted Successfully"
+    })
+
+}))
 
 
+//Create Membership
 
+router.post("/membership/create", isAuthenticatedUser, authorizeRoles("admin") , catchAsyncError(async(req, res, next)=>{
+    
+    const {memebership_type, name, membership_period, amount} = req.body;
+
+    const membership = await Membership.create({
+        name:name,
+        memebership_type:memebership_type,
+        membership_period:membership_period,
+        amount:amount,
+    });
+
+    res.status(201).json({
+        success:true,
+        membership
+    });
+}));
+
+
+//Update memebership
+
+router.put("/membership/update/:id",isAuthenticatedUser, authorizeRoles("admin") ,catchAsyncError(async(req, res, next)=>{
+
+    const {memebership_type, name, membership_period, amount} = req.body;
+
+    const new_membership_data = {
+        name:name,
+        memebership_type:memebership_type,
+        membership_period:membership_period,
+        amount:amount,
+    }
+
+    const membership = await Membership.findByIdAndUpdate(req.params.id,new_membership_data,{
+        new: true,
+        runValidators: true,
+        useFindAndModify: false,
+      } )
+
+      res.status(200).json({
+        success:true,
+        membership
+      })
+}))
+
+//Delete membership
+
+router.delete("/membership/delete/:id",isAuthenticatedUser, authorizeRoles("admin") ,catchAsyncError(async(req, res, next)=>{
+
+  
+    const membership = await Membership.findByIdAndDelete(req.params.id )
+    if(!membership) return next( new ErrorHander("Membership not found", 404));
+
+      res.status(200).json({
+        success:true,
+        message: "Deleted Successfully"
+      });
+}));
+
+
+// get active all members
+
+router.get("/members/all", isAuthenticatedUser, authorizeRoles("admin"), catchAsyncError(async(req, res, next)=>{
+
+    const members = await Member.find({ membership_status: true });
+
+    if(!members) return next(new ErrorHander("No Members found", 404));
+
+    res.status(200).json({
+        success:true,
+        members
+    })
+}));
+
+//Get single member with id
+router.get("/member/:id", isAuthenticatedUser, authorizeRoles("admin"), catchAsyncError(async(req,res,next)=>{
+
+    const member  = await Member.findById(req.params.id);
+
+    if(!member) return next(new ErrorHander("No member found", 404));
+
+    res.status(200).json({
+        success:true,
+        member
+    })
+
+}));
+
+router.put("/members/delete/:id", isAuthenticatedUser, authorizeRoles("admin"), catchAsyncError(async(req, res,next)=>{
+    const member = await Member.findByIdAndDelete(req.params.id);
+
+    if(!member) return next(new ErrorHander("Member not found", 404));
+
+    res.status(201).json({
+        message: "Member deleted successfully"
+    })
+}))
+
+    
 module.exports = router;

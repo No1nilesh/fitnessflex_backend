@@ -8,6 +8,8 @@ const { isAuthenticatedUser, authorizeRoles } = require("../middleware/auth");
 const sendEmail = require("../Utils/sendEmail");
 const crypto = require("crypto");
 const sendToken = require("../Utils/jwtToken");
+const catchAsyncError = require("../middleware/catchAsyncError");
+const ErrorHandler = require("../utils/errorhander");
 
 //create user
 router.post(
@@ -48,28 +50,24 @@ router.post(
 router.post(
   "/login",
   [body("email").isEmail(), body("password").isLength({ min: 5 })],
-  async (req, res) => {
+  catchAsyncError(
+  async (req, res, next) => {
     // js validator
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    try {
       const { password, email } = req.body;
 
-      let user = await User.findOne({ email: email }).select(+password);
+      let user = await User.findOne({ email: email });
 
-      if (!user) {
-        res.status(404).json({ error: "user not found with this email" });
-      }
+      if (!user) return next(new ErrorHandler("User Not found with this eamil", 404))
 
       sendToken(user, 201, res);
-    } catch (error) {
-      res.status(500).json({ error: "Internal Server Errror" });
-      console.log(error);
-    }
+ 
   }
+  )
 );
 
 //logout
