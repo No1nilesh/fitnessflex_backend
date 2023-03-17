@@ -80,11 +80,11 @@ router.get("/assigned/members", isAuthenticatedUser, authorizeRoles("trainer"), 
 }));
 
 
-
+//trainer creates workout for specific members
 router.post("/assigned/members/:memberId/workout-plans", isAuthenticatedUser, authorizeRoles("trainer"), catchAsyncError(async(req, res, next)=>{
     const trainer = await Trainer.findOne({user: req.user.id});
   
-    const {name, workout_content,description } =req.body;
+    const {name, exercise,description,} =req.body;
     // Check if the trainer is assigned to the specified member
     if (!trainer.assigned_members.includes(req.params.memberId)) {
       return res.status(401).json({
@@ -92,15 +92,12 @@ router.post("/assigned/members/:memberId/workout-plans", isAuthenticatedUser, au
         message: "You are not authorized to create a workout plan for this member."
       });
     }
-  
-    const workouts = await Workouts.create({
-      member: req.params.memberId,
-      trainer: trainer._id,
-      name: name,
-      workout_content:workout_content,
-      description: description
-    });
-  
+    const member = await Member.findById(req.params.memberId);
+    const currentDate = new Date();
+
+    const newWorkout = {name,exercise, description, createdAt:currentDate }
+    member.private_workouts.push(JSON.stringify(newWorkout))
+   const workouts = await member.save();
     // await Workouts.save();
   
     res.status(201).json({
@@ -111,6 +108,32 @@ router.post("/assigned/members/:memberId/workout-plans", isAuthenticatedUser, au
   }));
 
 
+  router.post('/workouts', isAuthenticatedUser, authorizeRoles('trainer'), catchAsyncError( async (req, res) => {
+   
+      // Get the workout data from the request body
+      const { name, description, workout_content } = req.body;
+  
+      // Get the trainer's ID from the authenticated user object
+      const trainerId = req.user.id;
+  
+      const trainer = await Trainer.findOne({user: trainerId})
+      // Get all assigned members
+      // const assignedMembers = await Member.find({ trainer: trainerId });
+
+      const workouts = await Workouts.create({
+        trainer:trainer._id,
+        name: name,
+        description:description,
+        workout_content:workout_content
+      })
+  
+      res.status(200).json({
+        success:true,
+        workouts
+      });
+  
+  }));
+  
 
   
 

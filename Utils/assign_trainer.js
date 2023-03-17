@@ -9,7 +9,7 @@ const assignTrainer = async(memberId)=>{
         $expr: { $lte: [{ $size: "$assigned_members" }, 9] }
       }).sort({ assigned_members: 1 }).limit(1)
     assert(availableTrainers.length > 0, "No trainers available");
-  
+  //Todo If availible Trainer  = 0;
     const assignedTrainer = availableTrainers[0];
     await Member.findByIdAndUpdate(memberId, { assigned_trainer: assignedTrainer._id });
     await Trainer.findByIdAndUpdate(

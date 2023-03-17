@@ -3,10 +3,7 @@ const { Schema } = require("mongoose");
 
 
 const workoutShema = new mongoose.Schema({
-    member:{
-        type:String,
-        required:true
-    },
+
     trainer:{
         type:mongoose.Schema.Types.ObjectId,
         ref: "Trainer",
@@ -23,6 +20,10 @@ workout_content:{
 description:{
     type:String,
     required:true
+},
+createdAt:{
+    type:Date,
+    default:Date.now
 }
 
 

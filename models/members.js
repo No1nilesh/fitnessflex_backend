@@ -29,6 +29,10 @@ type:String
         type: mongoose.Schema.Types.ObjectId,
         ref: "Membership"
     },
+    private_workouts:{
+        type:[String],
+        
+    },
     start_of_membership_date:{
         type:Date,
         required:true
