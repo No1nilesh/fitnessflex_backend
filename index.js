@@ -1,5 +1,6 @@
 const  json  = require('express');
 const express = require('express');
+const Fee_reminder = require("./Utils/feereminder")
 const ConnectToMongo = require("./Db/db")
 const cookieParser = require("cookie-parser")
 const cors = require("cors")
@@ -22,6 +23,7 @@ app.use("/api/user", require("./routes/userRoutes"))
 app.use("/api/payment", require("./routes/payment"))
 app.use("/api/member", require("./routes/member"))
 
+Fee_reminder()
 
 
 app.listen(port, ()=>{

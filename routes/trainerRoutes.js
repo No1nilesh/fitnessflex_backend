@@ -8,7 +8,8 @@ const { findByIdAndUpdate } = require("../models/trainer");
 const Member = require("../models/members");
 const Workouts = require("../models/workout");
 const router = express.Router();
-
+const mongoose = require("mongoose");
+const PrivateShema = require("../models/private_workout");
 
 router.get("/details", isAuthenticatedUser, authorizeRoles("trainer"), catchAsyncError(async(req, res, next)=>{
 //find trainer by user: user.id
@@ -56,7 +57,7 @@ router.put("/details/update", isAuthenticatedUser, authorizeRoles("trainer"), ca
 
 
 
-//Get assigned Members
+//Get assigned Members 
 router.get("/assigned/members", isAuthenticatedUser, authorizeRoles("trainer"), catchAsyncError(async(req, res, next)=>{
   const trainer = await Trainer.findOne({user : req.user.id})
     .populate({
@@ -80,40 +81,12 @@ router.get("/assigned/members", isAuthenticatedUser, authorizeRoles("trainer"), 
 }));
 
 
-//trainer creates workout for specific members
-router.post("/assigned/members/:memberId/workout-plans", isAuthenticatedUser, authorizeRoles("trainer"), catchAsyncError(async(req, res, next)=>{
-    const trainer = await Trainer.findOne({user: req.user.id});
-  
-    const {name, exercise,description,} =req.body;
-    // Check if the trainer is assigned to the specified member
-    if (!trainer.assigned_members.includes(req.params.memberId)) {
-      return res.status(401).json({
-        success: false,
-        message: "You are not authorized to create a workout plan for this member."
-      });
-    }
-    const member = await Member.findById(req.params.memberId);
-    const currentDate = new Date();
 
-    const newWorkout = {name,exercise, description, createdAt:currentDate }
-    member.private_workouts.push(JSON.stringify(newWorkout))
-   const workouts = await member.save();
-    // await Workouts.save();
-  
-    res.status(201).json({
-      success: true,
-      workouts,
-      message: "Workout plan created successfully."
-    });
-  }));
-
-
-  router.post('/workouts', isAuthenticatedUser, authorizeRoles('trainer'), catchAsyncError( async (req, res) => {
+//create new workouts for all asigned user
+  router.post('/workouts/new', isAuthenticatedUser, authorizeRoles('trainer'), catchAsyncError( async (req, res) => {
    
-      // Get the workout data from the request body
       const { name, description, workout_content } = req.body;
   
-      // Get the trainer's ID from the authenticated user object
       const trainerId = req.user.id;
   
       const trainer = await Trainer.findOne({user: trainerId})
@@ -133,8 +106,130 @@ router.post("/assigned/members/:memberId/workout-plans", isAuthenticatedUser, au
       });
   
   }));
-  
 
-  
+
+  //Update workout created for all assiged members
+router.put("/workouts/update/:id", isAuthenticatedUser, authorizeRoles("trainer"), catchAsyncError(async(req, res, next)=>{
+  const { name, description, workout_content } = req.body;
+const new_workout_data = {
+  name: name,
+  description:description,
+  workout_content:workout_content
+}
+const workout = await Workouts.findByIdAndUpdate(req.params.id, new_workout_data, {
+  new:true,
+  runValidators:true,
+  useFindAndModify:false
+});
+if(!workout)return next(new ErrorHandler("No workout found", 404));
+res.status(201).json({
+  success:true,
+  workout
+})
+}))
+
+
+//Delete workout for all asigned members
+router.delete("/workouts/delete/:id", isAuthenticatedUser, authorizeRoles("trainer"), catchAsyncError(async(req, res, next)=>{
+
+const workout = await Workouts.findByIdAndDelete(req.params.id);
+if(!workout)return next(new ErrorHandler("No workout found", 404));
+res.status(201).json({
+  success:true,
+  message:"Deleted Successfully"
+})
+}))
+
+
+
+
+//trainer creates workout for specific members private workouts
+router.post("/assigned/members/:memberId/workout-plans/new", isAuthenticatedUser, authorizeRoles("trainer"), catchAsyncError(async (req, res, next) => {
+
+    const trainer = await Trainer.findOne({ user: req.user.id });
+    const { workout_name, exercise, description } = req.body;
+
+    const memberId = req.params.memberId;
+    // Check if the trainer is assigned to the specified member
+    if (!trainer.assigned_members.includes(req.params.memberId)) {
+      return res.status(401).json({
+        success: false,
+        message: "You are not authorized to create a workout plan for this member.",
+      });
+    }   
+    const private_workout = await PrivateShema.create({
+
+      trainer:req.user.id,
+      member:memberId,
+      workout_name: workout_name,
+      exercise:exercise,
+      description:description
+    })
+
+    res.status(201).json({
+      success: true,
+      private_workout,
+      message: "Workout plan created successfully.",
+    });
+ 
+}));
+
+  //Get all the private_workouts for specific member private workouts
+  router.get("/assigned/members/:memberId/workout-plans", isAuthenticatedUser, authorizeRoles("trainer"), catchAsyncError(async(req, res, next)=>{
+    const member = await Member.findById(req.params.memberId);
+
+    if(!member)return next(new ErrorHandler("Member not exists", 404));
+const private_workout = await PrivateShema.find({member:req.params.memberId});
+
+if(!private_workout)return next(new ErrorHandler("No workout found", 404));
+
+res.status(200).json({
+  success:true,
+  private_workout
+})
+   
+  }))
+  //Get all the private_workouts for specific member private workouts
+  router.put("/assigned/members/:memberId/workout-plans/:workoutId", isAuthenticatedUser, authorizeRoles("trainer"), catchAsyncError(async(req, res, next)=>{
+    const { workout_name, exercise, description } = req.body;
+    const member = await Member.findOne({_id:req.params.memberId})
+    if(!member)return next(new ErrorHandler("Member not exists", 404));
+
+    const new_private_workout = {
+      workout_name:workout_name,
+      exercise:exercise,
+      description:description
+    }
+    
+    const private_workout = await PrivateShema.findByIdAndUpdate(req.params.workoutId, new_private_workout, {
+      new:true,
+      runValidators:true,
+      useFindAndModify:false
+    });
+    if(!private_workout)return next(new ErrorHandler("No workout found", 404));
+
+    res.status(200).json({
+      success:true,
+      private_workout
+    })
+ 
+  }))
+
+
+  //Delete private Workout
+  router.delete("/assigned/members/:memberId/workout-plans/:workoutId/delete", isAuthenticatedUser, authorizeRoles("trainer"), catchAsyncError(async(req, res, next)=>{
+
+    const member = await Member.findOne({_id:req.params.memberId})
+    if(!member)return next(new ErrorHandler("Member not exists", 404));
+
+    const private_workout = await PrivateShema.findByIdAndDelete(req.params.workoutId);
+    if(!private_workout)return next(new ErrorHandler("No workout found", 404));
+
+    res.status(200).json({
+      success:true,
+    message:"Deleted Successfully"
+    })
+ 
+  }))
 
 module.exports = router

@@ -1,3 +1,4 @@
+//Error handler clas to capture errors 
 class ErrorHandler extends Error{
     constructor(message,statusCode){
         super(message);

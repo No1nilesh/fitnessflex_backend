@@ -23,7 +23,8 @@ const user = await User.findById(req.user.id);
 
 if(!user) return next(new ErrorHandler("User not  found", 401));
 //finding membership
-const membership = await Membership.findById(req.params.id);
+const membershipId = req.params.id.replace(/\n$/, ''); // remove trailing newline character
+const membership = await Membership.findById(membershipId);
 
 if(!membership) return next(new ErrorHandler("Membership not found", 404));
 

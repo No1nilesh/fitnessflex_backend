@@ -59,11 +59,12 @@ router.post(
     }
 
       const { password, email } = req.body;
+      if(!email || !password) return next(new ErrorHandler("Please enter Email & password", 400))
 
       let user = await User.findOne({ email: email });
-
-      if (!user) return next(new ErrorHandler("User Not found with this eamil", 404))
-
+      if(!user) return next(new ErrorHandler("User not found with this email", 404));
+      const comparepassword = await bcrypt.compare(password, user.password);
+      if(!comparepassword) return next(new ErrorHandler("Invalid Credentials"));
       sendToken(user, 201, res);
  
   }
