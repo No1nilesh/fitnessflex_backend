@@ -7,9 +7,11 @@ const User = require("../models/User");
 const { isAuthenticatedUser, authorizeRoles } = require("../middleware/auth");
 const sendEmail = require("../Utils/sendEmail");
 const crypto = require("crypto");
+const cloudinary = require("cloudinary")
 const sendToken = require("../Utils/jwtToken");
 const catchAsyncError = require("../middleware/catchAsyncError");
 const ErrorHandler = require("../utils/errorhander");
+
 
 //create user
 router.post(
@@ -21,12 +23,22 @@ router.post(
   ],
   async (req, res) => {
     // js validator
+
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
+  
     try {
+
+      const myCloud = await cloudinary.v2.uploader.upload(req.body.avatar, {
+        folder: "avatars",
+        width: 150,
+        crop: "scale",
+      });
+    
       const { name, email, password } = req.body;
       let user = await User.findOne({ email: email });
 
@@ -37,6 +49,10 @@ router.post(
         name: name,
         email: email,
         password: password,
+        avatar: {
+          public_id: myCloud.public_id,
+          url: myCloud.secure_url,
+        },
       });
 
       sendToken(user, 201, res);
@@ -65,6 +81,8 @@ router.post(
       if(!user) return next(new ErrorHandler("User not found with this email", 404));
       const comparepassword = await bcrypt.compare(password, user.password);
       if(!comparepassword) return next(new ErrorHandler("Invalid Credentials"));
+
+     
       sendToken(user, 201, res);
  
   }
@@ -165,7 +183,7 @@ router.put("/reset/:token", async (req, res, next) => {
 
 //get user data
 
-router.get("/me", isAuthenticatedUser, async (req, res) => {
+router.get("/me", isAuthenticatedUser, async (req, res, next) => {
   const user = await User.findById(req.user.id);
   res.status(200).json({
     success: true,
@@ -200,11 +218,34 @@ router.put("/password/update", isAuthenticatedUser, async (req, res) => {
   sendToken(user, 200, res);
 });
 
+
+//update user
+
 router.put("/me/update",isAuthenticatedUser, async (req, res) => {
   const newuserdata = {
     name: req.body.name,
     email: req.body.email,
   };
+
+  if (req.body.avatar !== "") {
+    const user = await User.findById(req.user.id);
+
+    const imageId = user.avatar.public_id;
+
+    await cloudinary.v2.uploader.destroy(imageId);
+
+    const myCloud = await cloudinary.v2.uploader.upload(req.body.avatar, {
+      folder: "avatars",
+      width: 150,
+      crop: "scale",
+    });
+
+    newuserdata.avatar = {
+      public_id: myCloud.public_id,
+      url: myCloud.secure_url,
+    };
+  }
+
 
   const user = await User.findByIdAndUpdate(req.user.id, newuserdata, {
     new: true,

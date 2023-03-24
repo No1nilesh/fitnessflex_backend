@@ -3,18 +3,37 @@ const express = require('express');
 const Fee_reminder = require("./Utils/feereminder")
 const ConnectToMongo = require("./Db/db")
 const cookieParser = require("cookie-parser")
-const cors = require("cors")
-require("dotenv").config()
+const cors = require("cors");
+const cloudinary = require("cloudinary");
+const bodyParser = require("body-parser")
+const fileUpload = require('express-fileupload');
 const app = express();
-app.use(express.json());
+require("dotenv").config()
+ConnectToMongo();
+
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+
+const port = process.env.PORT ||  5000;
+
+
+
+app.use(express.json()); 
 app.use(cookieParser())
 app.use(cors())
-ConnectToMongo();
-const port = process.env.PORT || 5000 ;
-            
-app.get("/", (req, res)=>{
-    res.send("hello world") 
-})
+app.use(fileUpload())
+app.use(bodyParser.urlencoded({extended:true}));
+
+
+app.use(function(req, res, next) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    next();
+  });
+
 
 app.use("/api/auth" , require("./routes/auth") );
 app.use("/api/admin", require("./routes/adminroutes") );

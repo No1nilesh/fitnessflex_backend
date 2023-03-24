@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const catchAsyncError = require("../middleware/catchAsyncError")
-const errorhander = require("../middleware/error")
+const ErrorHandler = require("../middleware/error")
 
 // Authenticatong User
 // 
@@ -10,8 +10,8 @@ const errorhander = require("../middleware/error")
 
 exports.isAuthenticatedUser =catchAsyncError( async (req, res, next) => {
   const { token } = req.cookies;
-
-  if (!token) return next(new errorhander("Please login to access resource", 400))
+console.log(token)
+  if (!token) return next(new ErrorHandler("Please login to access resource", 400))
 
   const decodedData = jwt.verify(token, process.env.JWT_SECRET);
 
