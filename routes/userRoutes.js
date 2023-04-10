@@ -2,7 +2,7 @@ const express = require("express");
 const router =  express.Router();
 const catchAsyncError = require("../middleware/catchAsyncError")
 const Membership = require("../models/membership")
-const ErrorHander = require("../Utils/errorhander");
+const ErrorHander = require("../Utils/ErrorHandler");
 
 
 router.get("/membership" , catchAsyncError(async(req, res, next)=>{

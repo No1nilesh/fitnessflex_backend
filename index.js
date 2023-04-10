@@ -7,6 +7,7 @@ const cors = require("cors");
 const cloudinary = require("cloudinary");
 const bodyParser = require("body-parser")
 const fileUpload = require('express-fileupload');
+const errorMiddleware =   require("./middleware/error")
 const app = express();
 require("dotenv").config()
 ConnectToMongo();
@@ -18,6 +19,7 @@ ConnectToMongo();
   });
 
 const port = process.env.PORT ||  5000;
+
 
 
 
@@ -42,6 +44,8 @@ app.use("/api/user", require("./routes/userRoutes"))
 app.use("/api/payment", require("./routes/payment"))
 app.use("/api/member", require("./routes/member"))
 
+
+app.use(errorMiddleware);
 Fee_reminder()
 
 

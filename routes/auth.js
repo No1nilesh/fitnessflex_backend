@@ -10,7 +10,9 @@ const crypto = require("crypto");
 const cloudinary = require("cloudinary")
 const sendToken = require("../Utils/jwtToken");
 const catchAsyncError = require("../middleware/catchAsyncError");
-const ErrorHandler = require("../utils/errorhander");
+const ErrorHandler = require("../Utils/ErrorHandler");
+const Trainer = require("../models/trainer");
+const Member = require("../models/members");
 
 
 //create user
@@ -21,17 +23,13 @@ router.post(
     body("email").isEmail(),
     body("password").isLength({ min: 5 }),
   ],
-  async (req, res) => {
+  catchAsyncError(
+  async (req, res, next) => {
     // js validator
-
-
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-
-  
-    try {
 
       const myCloud = await cloudinary.v2.uploader.upload(req.body.avatar, {
         folder: "avatars",
@@ -42,8 +40,7 @@ router.post(
       const { name, email, password } = req.body;
       let user = await User.findOne({ email: email });
 
-      if (user)
-        return res.status(404).json({ error: "User is alredy Availible" });
+      if(user)return next(new ErrorHandler("Email is in Use", 404));
 
       user = await User.create({
         name: name,
@@ -56,11 +53,8 @@ router.post(
       });
 
       sendToken(user, 201, res);
-    } catch (error) {
-      res.status(500).json({ error: "Internal Server Errror" });
-    }
   }
-);
+));
 
 //login route  /api/auth/login
 router.post(
@@ -75,12 +69,19 @@ router.post(
     }
 
       const { password, email } = req.body;
-      if(!email || !password) return next(new ErrorHandler("Please enter Email & password", 400))
+      if(!email || !password){
+        return next(new ErrorHandler("Please enter Email & password", 400))
+      }
 
       let user = await User.findOne({ email: email });
-      if(!user) return next(new ErrorHandler("User not found with this email", 404));
+      if(!user){
+        return next(new ErrorHandler("User not found with this email", 404));
+      }
       const comparepassword = await bcrypt.compare(password, user.password);
-      if(!comparepassword) return next(new ErrorHandler("Invalid Credentials"));
+      if(!comparepassword){
+        return next(new ErrorHandler("Invalid Credentials", 400));
+      }
+
 
      
       sendToken(user, 201, res);
@@ -108,9 +109,7 @@ router.get("/logout", async (req, res, next) => {
 router.post("/password/forgot", async (req, res, next) => {
   const user = await User.findOne({ email: req.body.email });
 
-  if (!user) {
-    return res.status(404).json({ error: "user not found" });
-  }
+  if (!user) return next(new ErrorHandler("User not Found", 404));
 
   //get resetpassword token
 
@@ -119,9 +118,7 @@ router.post("/password/forgot", async (req, res, next) => {
 
     await user.save({ validateBeforeSave: false });
 
-    const resetPasswordUrl = `http://localhost:5000/api/auth/reset/${resetToken}`;
-    console.log(resetToken);
-
+    const resetPasswordUrl = `http://localhost:3000/api/auth/reset/${resetToken}`;
     const message = `Your password reset Token is :- \n\n ${resetPasswordUrl} \n\n `;
 
     await sendEmail({
@@ -147,9 +144,8 @@ router.post("/password/forgot", async (req, res, next) => {
 
 //Reset Password
 
-router.put("/reset/:token", async (req, res, next) => {
+router.put("/reset/:token", catchAsyncError(async (req, res, next) => {
   // creating token hash
-  try {
     const resetPasswordToken = crypto
       .createHash("sha256")
       .update(req.params.token)
@@ -160,13 +156,10 @@ router.put("/reset/:token", async (req, res, next) => {
       resetPasswordExpire: { $gt: Date.now() },
     });
 
-    if (!user)
-      return res
-        .status(400)
-        .json({ error: "Reset password token is invalid or has been expired" });
-
+    if (!user) return next(new ErrorHandler("Reset password token is invalid or has been expired", 400));
+  
     if (req.body.password !== req.body.confirmPassword)
-      return res.status(404).json({ error: "password doesn't matched" });
+      return next(new ErrorHandler("Password doens't match", 404)); 
 
     user.password = req.body.password;
     user.resetPasswordToken = undefined;
@@ -175,21 +168,19 @@ router.put("/reset/:token", async (req, res, next) => {
     await user.save();
 
     sendToken(user, 200, res);
-  } catch (error) {
-    res.status(500).json({ error: "Internal server error" });
-    console.log(error);
-  }
-});
+
+}));
 
 //get user data
 
-router.get("/me", isAuthenticatedUser, async (req, res, next) => {
+router.get("/me", isAuthenticatedUser, catchAsyncError( async (req, res, next) => {
   const user = await User.findById(req.user.id);
+  if(!user) return next(new ErrorHandler('UnAuthorise user', 401));
   res.status(200).json({
     success: true,
     user,
-  });
-});
+  })
+}));
 
 //update Password
 
@@ -221,39 +212,96 @@ router.put("/password/update", isAuthenticatedUser, async (req, res) => {
 
 //update user
 
-router.put("/me/update",isAuthenticatedUser, async (req, res) => {
-  const newuserdata = {
+// router.put("/me/update",isAuthenticatedUser,catchAsyncError(async (req, res, next) => {
+//   const newUserData = {
+//     name: req.body.name,
+//     email: req.body.email,
+//   };
+
+//   if (req.body.avatar !== "") {
+//     const user = await User.findById(req.user.id);
+
+//     const imageId = user.avatar.public_id;
+
+//     await cloudinary.v2.uploader.destroy(imageId);
+
+//     const myCloud = await cloudinary.v2.uploader.upload(req.body.avatar, {
+//       folder: "avatars",
+//       width: 150,
+//       crop: "scale",
+//     });
+
+    
+
+//     newUserData.avatar = {
+//       public_id: myCloud.public_id,
+//       url: myCloud.secure_url,
+//     };
+//   } 
+
+//   const updateduser = await User.findByIdAndUpdate(req.user.id, newUserData, {
+//     new: true,
+//     runValidators: true,
+//     useFindAndModify: false,
+//   });
+
+//   res.status(200).json({
+//     success: true,
+//   });
+// }));
+
+
+
+//trying
+
+router.put("/me/update",isAuthenticatedUser,catchAsyncError(async (req, res, next) => {
+  const newUserData = {
     name: req.body.name,
     email: req.body.email,
   };
 
   if (req.body.avatar !== "") {
     const user = await User.findById(req.user.id);
-
     const imageId = user.avatar.public_id;
-
     await cloudinary.v2.uploader.destroy(imageId);
-
     const myCloud = await cloudinary.v2.uploader.upload(req.body.avatar, {
       folder: "avatars",
       width: 150,
       crop: "scale",
     });
 
-    newuserdata.avatar = {
+    
+
+    newUserData.avatar = {
       public_id: myCloud.public_id,
       url: myCloud.secure_url,
     };
+  } 
+
+  const member = await Member.findOne({user: req.user.id})
+
+  if(member){
+   await member.updateOne(newUserData);
   }
 
+  if(authorizeRoles("trainer")){
+    const trainer  = await Trainer.findOneAndUpdate({user: req.user.id} , newUserData , {
+      new: true,
+      runValidators : true,
+      useFindAndModify: false
+    })
+  }
 
-  const user = await User.findByIdAndUpdate(req.user.id, newuserdata, {
+  const updateduser = await User.findByIdAndUpdate(req.user.id, newUserData, {
     new: true,
     runValidators: true,
     useFindAndModify: false,
   });
 
-  res.status(200).json({ success: true });
-});
+  res.status(200).json({
+    success: true,
+  });
+}));
+
 
 module.exports = router;

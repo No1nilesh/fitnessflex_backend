@@ -6,7 +6,7 @@ const membershipSchema = new mongoose.Schema({
         required:true,
         unique: true
     },
-    memebership_type:{
+    membership_type:{
         type:String,
         required:true
     },

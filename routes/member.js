@@ -4,9 +4,20 @@ const catchAsyncError = require("../middleware/catchAsyncError");
 const Member = require("../models/members");
 const PrivateShema = require("../models/private_workout");
 const Workouts = require("../models/workout");
-const ErrorHandler = require("../utils/errorhander");
+const ErrorHandler = require("../Utils/ErrorHandler");
 const router = express.Router();
 
+
+router.get("/me", isAuthenticatedUser, catchAsyncError(async(req, res, next)=>{
+const member = await Member.findOne({user : req.user.id});
+
+if(!member) return next(new ErrorHandler("You are Not a member", 400));
+
+res.status(200).json({
+    success: true,
+    member
+})
+}))
 
 router.get("/workouts", isAuthenticatedUser, isActiveMember, catchAsyncError(async(req, res, next)=>{
 const member = await Member.findOne({user: req.user.id});
