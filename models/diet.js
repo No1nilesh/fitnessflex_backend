@@ -1,6 +1,6 @@
 const mongoose = require("mongoose")
 
-const privateShema = new mongoose.Schema({
+const dietShema = new mongoose.Schema({
 
     trainer:{
         type:mongoose.Schema.Types.ObjectId,
@@ -10,11 +10,11 @@ const privateShema = new mongoose.Schema({
         type:mongoose.Schema.Types.ObjectId,
         ref: "Member"
     },
-    workout_name:{
+    diet_name:{ 
         type:String,
        
     },
-    exercise:{
+    diet:{
         type:String
     },
     description:{
@@ -27,6 +27,6 @@ const privateShema = new mongoose.Schema({
 
 })
 
-const PrivateShema = mongoose.model("private_workout", privateShema);
+const DietShema = mongoose.model("diet", dietShema);
 
-module.exports = PrivateShema;
+module.exports = DietShema;

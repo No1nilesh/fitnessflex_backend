@@ -5,6 +5,7 @@ const Member = require("../models/members");
 const PrivateShema = require("../models/private_workout");
 const Workouts = require("../models/workout");
 const ErrorHandler = require("../Utils/ErrorHandler");
+const DietShema = require("../models/diet");
 const router = express.Router();
 
 
@@ -44,6 +45,19 @@ router.get("/private_workouts", isAuthenticatedUser, isActiveMember, catchAsyncE
     res.status(200).json({
         success:true,
         private_workout
+    })
+}))
+
+router.get("/private_diets", isAuthenticatedUser, isActiveMember, catchAsyncError(async(req, res, next)=>{
+    const member = await Member.findOne({user:req.user.id})
+    if(!member)return next(new ErrorHandler("Member not found", 404))
+    const private_diet = await DietShema.find({member:member._id});
+
+    if(!private_diet)return next(new ErrorHandler("No diet found", 404));
+
+    res.status(200).json({
+        success:true,
+        private_diet
     })
 }))
 

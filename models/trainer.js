@@ -15,7 +15,10 @@ const trainerSchema = new mongoose.Schema({
     },
     name:{type:String , required:true},
     email:{type:String, required: true},
-    assigned_members:{type: [String], max: 10,uniquie:true},
+    assigned_members:{type: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Member'
+    }], max: 10,uniquie:true},
     specialties: [{ type: String, required: true }],
     hourlyRate: { type: Number, required: true },
     availability: { type: String, required: true },
